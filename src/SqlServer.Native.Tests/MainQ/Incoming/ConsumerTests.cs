@@ -19,7 +19,7 @@ public class ConsumerTests :
         using (var connection = await database.OpenConnection())
         {
             var manager = new QueueManager(table, connection);
-            manager.Create().Await();
+            await manager.Create();
             await TestDataBuilder.SendData(table, connection);
             var consumer = new QueueManager(table, connection);
             using (var result = consumer.Consume().Result)
