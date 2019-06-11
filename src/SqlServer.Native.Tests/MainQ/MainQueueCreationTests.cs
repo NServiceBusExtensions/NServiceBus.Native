@@ -1,20 +1,23 @@
-﻿using ApprovalTests;
+﻿using System.Threading.Tasks;
+using ApprovalTests;
 using NServiceBus.Transport.SqlServerNative;
 using Xunit;
 using Xunit.Abstractions;
 
 public class MainQueueCreationTests :
-    XunitLoggingBase
+    TestBase
 {
     [Fact]
-    public void Run()
+    public async Task Run()
     {
-        using (var connection = Connection.OpenConnection())
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
         {
             var manager = new QueueManager("MainQueueCreationTests", connection);
-            manager.Drop().Await();
-            manager.Create().Await();
-            var sqlScriptBuilder = new SqlScriptBuilder(tables: true, namesToInclude: "MainQueueCreationTests");
+            await manager.Create();
+            var sqlScriptBuilder = new SqlScriptBuilder(
+                tables: true,
+                namesToInclude: "MainQueueCreationTests");
             Approvals.Verify(sqlScriptBuilder.BuildScript(connection));
         }
     }
