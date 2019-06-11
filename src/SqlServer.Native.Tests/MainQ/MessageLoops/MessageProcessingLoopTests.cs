@@ -8,7 +8,8 @@ using NServiceBus.Transport.SqlServerNative;
 using Xunit;
 using Xunit.Abstractions;
 
-public class MessageProcessingLoopTests : TestBase
+public class MessageProcessingLoopTests :
+    TestBase
 {
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 
@@ -20,7 +21,7 @@ public class MessageProcessingLoopTests : TestBase
         await SqlConnection.DropTable(null, table);
         var manager = new QueueManager(table, SqlConnection);
         await manager.Create();
-        await SendMessages();
+        await SendMessages(manager);
 
         Exception exception = null;
         using (var loop = new MessageProcessingLoop(
@@ -46,7 +47,7 @@ public class MessageProcessingLoopTests : TestBase
         await SqlConnection.DropTable(null, table);
         var manager = new QueueManager(table, SqlConnection);
         await manager.Create();
-        await SendMessages();
+        await SendMessages(manager);
 
         var count = 0;
 
@@ -83,7 +84,7 @@ public class MessageProcessingLoopTests : TestBase
         await SqlConnection.DropTable(null, table);
         var manager = new QueueManager(table, SqlConnection);
         await manager.Create();
-        await SendMessages();
+        await SendMessages(manager);
 
         long rowVersion = 0;
 
@@ -113,10 +114,8 @@ public class MessageProcessingLoopTests : TestBase
         Assert.Equal(6, rowVersion);
     }
 
-    Task SendMessages()
+    static Task SendMessages(QueueManager sender)
     {
-        var sender = new QueueManager(table, SqlConnection);
-
         return sender.Send(new List<OutgoingMessage>
         {
             BuildMessage("00000000-0000-0000-0000-000000000001"),
@@ -132,7 +131,8 @@ public class MessageProcessingLoopTests : TestBase
         return new OutgoingMessage(new Guid(guid), dateTime, "headers", Encoding.UTF8.GetBytes("{}"));
     }
 
-    public MessageProcessingLoopTests(ITestOutputHelper output) : base(output)
+    public MessageProcessingLoopTests(ITestOutputHelper output) :
+        base(output)
     {
     }
 }
