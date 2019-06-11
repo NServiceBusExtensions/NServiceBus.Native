@@ -2,7 +2,6 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using LocalDb;
-using NServiceBus.Transport.SqlServerNative;
 using Xunit.Abstractions;
 
 public class TestBase:

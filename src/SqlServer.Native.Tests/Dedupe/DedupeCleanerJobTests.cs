@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data.SqlClient;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,8 +12,6 @@ public class DedupeCleanerJobTests :
 {
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 
-    string table = "DedupeCleanerJobTests";
-
     [Fact]
     public async Task Should_only_clean_up_old_item()
     {
@@ -22,19 +19,19 @@ public class DedupeCleanerJobTests :
 
         using (var connection = await database.OpenConnection())
         {
-            var queueManager = new QueueManager(table, connection, "Deduplication");
+            var queueManager = new QueueManager("Target", connection, "Deduplication");
             await queueManager.Create();
             var dedupeManager = new DedupeManager(connection, "Deduplication");
             await dedupeManager.Create();
 
             var message1 = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
-            await Send(message1,connection);
+            await queueManager.Send(message1);
             Thread.Sleep(1000);
             var now = DateTime.UtcNow;
             Thread.Sleep(1000);
 
             var message2 = BuildBytesMessage("00000000-0000-0000-0000-000000000002");
-            await Send(message2,connection);
+            await queueManager.Send(message2);
             var expireWindow = DateTime.UtcNow - now;
             var cleaner = new DedupeCleanerJob(
                 "Deduplication",
@@ -47,12 +44,6 @@ public class DedupeCleanerJobTests :
             cleaner.Stop().Await();
             ObjectApprover.VerifyWithJson(SqlHelper.ReadDuplicateData("Deduplication", connection));
         }
-    }
-
-    Task<long> Send(OutgoingMessage message, SqlConnection connection)
-    {
-        var sender = new QueueManager(table, connection, "Deduplication");
-       return sender.Send(message);
     }
 
     static OutgoingMessage BuildBytesMessage(string guid)
