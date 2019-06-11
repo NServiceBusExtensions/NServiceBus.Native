@@ -10,7 +10,6 @@ public class TestBase:
     public TestBase(ITestOutputHelper output) :
         base(output)
     {
-        SqlConnection = Connection.OpenConnection();
     }
 
     static SqlInstance instance;
@@ -29,13 +28,5 @@ public class TestBase:
         [CallerMemberName] string memberName = null)
     {
         return instance.Build(GetType().Name, databaseSuffix, memberName);
-    }
-
-    public SqlConnection SqlConnection;
-
-    public override void Dispose()
-    {
-        SqlConnection?.Dispose();
-        base.Dispose();
     }
 }
