@@ -13,8 +13,8 @@ public class DelayedReaderTests : TestBase
     [Fact]
     public async Task Single()
     {
-        await DelayedTestDataBuilder.SendData(table);
         var reader = new DelayedQueueManager(table, SqlConnection);
+        await reader.SendData();
         using (var result = reader.Read(1).Result)
         {
             ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
@@ -24,8 +24,8 @@ public class DelayedReaderTests : TestBase
     [Fact]
     public async Task Single_nulls()
     {
-        await DelayedTestDataBuilder.SendNullData(table);
         var reader = new DelayedQueueManager(table, SqlConnection);
+        await reader.SendNullData();
         using (var result = reader.Read(1).Result)
         {
             ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
@@ -35,9 +35,8 @@ public class DelayedReaderTests : TestBase
     [Fact]
     public async Task Batch()
     {
-        await DelayedTestDataBuilder.SendMultipleData(table);
-
         var reader = new DelayedQueueManager(table, SqlConnection);
+        await reader.SendMultipleData();
         var messages = new ConcurrentBag<IncomingDelayedVerifyTarget>();
         var result = reader.Read(
                 size: 3,

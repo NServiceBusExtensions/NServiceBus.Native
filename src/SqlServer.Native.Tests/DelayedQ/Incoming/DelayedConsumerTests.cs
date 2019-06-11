@@ -13,44 +13,60 @@ public class DelayedConsumerTests : TestBase
     [Fact]
     public async Task Single()
     {
-       await DelayedTestDataBuilder.SendData(table);
-        var consumer = new DelayedQueueManager(table, SqlConnection);
-        using (var result = consumer.Consume().Result)
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.SendData();
+            using (var result = manager.Consume().Result)
+            {
+                ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            }
         }
     }
 
     [Fact]
     public async Task Single_nulls()
     {
-        await DelayedTestDataBuilder.SendNullData(table);
-        var consumer = new DelayedQueueManager(table, SqlConnection);
-        using (var result = consumer.Consume().Result)
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.SendNullData();
+            using (var result = manager.Consume().Result)
+            {
+                ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            }
         }
     }
 
     [Fact]
     public async Task Batch()
     {
-        await DelayedTestDataBuilder.SendMultipleData(table);
+        var database = await LocalDb();
 
-        var consumer = new DelayedQueueManager(table, SqlConnection);
-        var messages = new ConcurrentBag<IncomingDelayedVerifyTarget>();
-        var result = consumer.Consume(size: 3,
-                action: message => { messages.Add(message.ToVerifyTarget()); })
-            .Result;
-        Assert.Equal(3, result.Count);
-        Assert.Equal(3, result.LastRowVersion);
-        ObjectApprover.VerifyWithJson(messages.OrderBy(x => x.Due));
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.SendMultipleData();
+
+            var messages = new ConcurrentBag<IncomingDelayedVerifyTarget>();
+            var result = manager.Consume(size: 3,
+                    action: message => { messages.Add(message.ToVerifyTarget()); })
+                .Result;
+            Assert.Equal(3, result.Count);
+            Assert.Equal(3, result.LastRowVersion);
+            ObjectApprover.VerifyWithJson(messages.OrderBy(x => x.Due));
+        }
     }
 
-    public DelayedConsumerTests(ITestOutputHelper output) : base(output)
+    public DelayedConsumerTests(ITestOutputHelper output) :
+        base(output)
     {
-        var manager = new DelayedQueueManager(table, SqlConnection);
-        manager.Drop().Await();
-        manager.Create().Await();
     }
 }
