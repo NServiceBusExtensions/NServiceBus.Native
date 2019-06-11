@@ -5,7 +5,7 @@ using Xunit;
 using Xunit.Abstractions;
 
 public class QueueCreatorIntegration:
-    XunitLoggingBase
+    TestBase
 {
     static ManualResetEvent resetEvent;
 
@@ -13,11 +13,15 @@ public class QueueCreatorIntegration:
     public async Task Run()
     {
         resetEvent = new ManualResetEvent(false);
-        var configuration = await EndpointCreator.Create("IntegrationSend");
-        var endpoint = await Endpoint.Start(configuration);
-        await SendStartMessage(endpoint);
-        resetEvent.WaitOne();
-        await endpoint.Stop();
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
+        {
+            var configuration = await EndpointCreator.Create("IntegrationSend", connection);
+            var endpoint = await Endpoint.Start(configuration);
+            await SendStartMessage(endpoint);
+            resetEvent.WaitOne();
+            await endpoint.Stop();
+        }
     }
 
     static Task SendStartMessage(IEndpointInstance endpoint)
