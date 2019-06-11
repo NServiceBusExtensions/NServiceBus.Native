@@ -1,5 +1,6 @@
-﻿using System;
+﻿ using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,43 +9,67 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class DelayedSenderTests : TestBase
+public class DelayedSenderTests :
+    TestBase
 {
-    string table = "DelayedSenderTests";
+    static string table = "DelayedSenderTests";
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 
     [Fact]
     public async Task Single_bytes()
     {
-        var message = BuildBytesMessage();
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, SqlConnection));
+        var localDb = await LocalDb();
+        using (var connection = await localDb.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            var message = BuildBytesMessage();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_bytes_nulls()
     {
-        var message = BuildBytesNullMessage();
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, SqlConnection));
+        var localDb = await LocalDb();
+        using (var connection = await localDb.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            var message = BuildBytesNullMessage();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_stream()
     {
-        var message = BuildStreamMessage();
-        await  Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, SqlConnection));
+        var localDb = await LocalDb();
+        using (var connection = await localDb.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            var message = BuildStreamMessage();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_stream_nulls()
     {
-        var sender = new DelayedQueueManager(table, SqlConnection);
+        var localDb = await LocalDb();
+        using (var connection = await localDb.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
 
-        var message = BuildBytesNullMessage();
-        await sender.Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, SqlConnection));
+            var message = BuildBytesNullMessage();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, connection));
+        }
     }
 
     [Fact]
@@ -55,8 +80,15 @@ public class DelayedSenderTests : TestBase
             BuildBytesMessage(),
             BuildStreamMessage()
         };
-        await Send(messages);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, SqlConnection));
+        var localDb = await LocalDb();
+        using (var connection = await localDb.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+
+            await manager.Send(messages);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, connection));
+        }
     }
 
     [Fact]
@@ -67,22 +99,14 @@ public class DelayedSenderTests : TestBase
             BuildBytesNullMessage(),
             BuildStreamNullMessage()
         };
-        await Send(messages);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, SqlConnection));
-    }
-
-    Task<long> Send(OutgoingDelayedMessage message)
-    {
-        var sender = new DelayedQueueManager(table, SqlConnection);
-
-        return sender.Send(message);
-    }
-
-    Task Send(List<OutgoingDelayedMessage> messages)
-    {
-        var sender = new DelayedQueueManager(table, SqlConnection);
-
-        return sender.Send(messages);
+        var localDb = await LocalDb();
+        using (var connection = await localDb.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.Send(messages);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadDelayedData(table, connection));
+        }
     }
 
     static OutgoingDelayedMessage BuildBytesMessage()
@@ -106,10 +130,8 @@ public class DelayedSenderTests : TestBase
         return new OutgoingDelayedMessage(dateTime, null, bodyStream: null);
     }
 
-    public DelayedSenderTests(ITestOutputHelper output) : base(output)
+    public DelayedSenderTests(ITestOutputHelper output) :
+        base(output)
     {
-        var manager = new DelayedQueueManager(table, SqlConnection);
-        manager.Drop().Await();
-        manager.Create().Await();
     }
 }
