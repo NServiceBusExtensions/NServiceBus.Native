@@ -7,7 +7,8 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class DedupeManagerTests : TestBase
+public class DedupeManagerTests : 
+    TestBase
 {
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 

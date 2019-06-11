@@ -7,7 +7,8 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class WithDedupeTests : TestBase
+public class WithDedupeTests :
+    TestBase
 {
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 
@@ -17,17 +18,33 @@ public class WithDedupeTests : TestBase
     public async Task Single()
     {
         var message = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection, "Deduplication");
+            await manager.Create();
+            var dedupeManager = new DedupeManager(connection, "Deduplication");
+            await dedupeManager.Create();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_WithDuplicate()
     {
         var message = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
-        await Send(message);
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection, "Deduplication");
+            await manager.Create();
+            var dedupeManager = new DedupeManager(connection, "Deduplication");
+            await dedupeManager.Create();
+            await manager.Send(message);
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     //[Fact]
@@ -47,48 +64,60 @@ public class WithDedupeTests : TestBase
             BuildBytesMessage("00000000-0000-0000-0000-000000000001"),
             BuildBytesMessage("00000000-0000-0000-0000-000000000002")
         };
-        await Send(messages);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection, "Deduplication");
+            await manager.Create();
+            var dedupeManager = new DedupeManager(connection, "Deduplication");
+            await dedupeManager.Create();
+            await manager.Send(messages);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Batch_WithFirstDuplicate()
     {
         var message = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
-        await Send(message);
         var messages = new List<OutgoingMessage>
         {
             BuildBytesMessage("00000000-0000-0000-0000-000000000001"),
             BuildBytesMessage("00000000-0000-0000-0000-000000000002")
         };
-        await Send(messages);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection, "Deduplication");
+            await manager.Create();
+            var dedupeManager = new DedupeManager(connection, "Deduplication");
+            await dedupeManager.Create();
+            await manager.Send(message);
+            await manager.Send(messages);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Batch_WithSecondDuplicate()
     {
         var message = BuildBytesMessage("00000000-0000-0000-0000-000000000002");
-        await Send(message);
         var messages = new List<OutgoingMessage>
         {
             BuildBytesMessage("00000000-0000-0000-0000-000000000001"),
             BuildBytesMessage("00000000-0000-0000-0000-000000000002")
         };
-        await Send(messages);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
-    }
-
-    Task Send(List<OutgoingMessage> messages)
-    {
-        var sender = new QueueManager(table, SqlConnection, "Deduplication");
-        return sender.Send(messages);
-    }
-
-    Task<long> Send(OutgoingMessage message)
-    {
-        var sender = new QueueManager(table, SqlConnection, "Deduplication");
-        return sender.Send(message);
+        var database = await LocalDb();
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection, "Deduplication");
+            await manager.Create();
+            var dedupeManager = new DedupeManager(connection, "Deduplication");
+            await dedupeManager.Create();
+            await manager.Send(message);
+            await manager.Send(messages);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     static OutgoingMessage BuildBytesMessage(string guid)
@@ -96,13 +125,8 @@ public class WithDedupeTests : TestBase
         return new OutgoingMessage(new Guid(guid), dateTime, "headers", Encoding.UTF8.GetBytes("{}"));
     }
 
-    public WithDedupeTests(ITestOutputHelper output) : base(output)
+    public WithDedupeTests(ITestOutputHelper output) :
+        base(output)
     {
-        var manager = new QueueManager(table, SqlConnection, "Deduplication");
-        manager.Drop().Await();
-        manager.Create().Await();
-        var dedupeManager = new DedupeManager(SqlConnection, "Deduplication");
-        dedupeManager.Drop().Await();
-        dedupeManager.Create().Await();
     }
 }

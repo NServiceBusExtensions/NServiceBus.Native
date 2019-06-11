@@ -9,7 +9,8 @@ using NServiceBus.Transport.SqlServerNative;
 using Xunit;
 using Xunit.Abstractions;
 
-public class HttpPassthroughDedupTests : TestBase
+public class HttpPassthroughDedupTests :
+    TestBase
 {
     static int count;
     [Fact]

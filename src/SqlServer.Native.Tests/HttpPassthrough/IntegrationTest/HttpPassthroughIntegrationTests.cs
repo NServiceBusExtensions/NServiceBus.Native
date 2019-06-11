@@ -84,7 +84,8 @@ public class HttpPassthroughIntegrationTests : TestBase
         }
     }
 
-    public HttpPassthroughIntegrationTests(ITestOutputHelper output) : base(output)
+    public HttpPassthroughIntegrationTests(ITestOutputHelper output) :
+        base(output)
     {
     }
 }

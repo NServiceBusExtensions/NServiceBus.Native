@@ -10,7 +10,8 @@ using Xunit;
 using Xunit.Abstractions;
 using Headers = NServiceBus.Transport.SqlServerNative.Headers;
 
-public class SendIntegration : TestBase
+public class SendIntegration :
+    TestBase
 {
     static ManualResetEvent resetEvent;
 

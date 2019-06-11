@@ -10,7 +10,8 @@ using Xunit.Abstractions;
 using DedupeOutcome = NServiceBus.Transport.SqlServerDeduplication.DedupeOutcome;
 using DedupeResult = NServiceBus.Transport.SqlServerDeduplication.DedupeResult;
 
-public class DedupeIntegrationTests : TestBase
+public class DedupeIntegrationTests :
+    TestBase
 {
     static CountdownEvent countdown = new CountdownEvent(2);
 
