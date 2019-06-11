@@ -90,7 +90,8 @@ public class MessageConsumingLoopTests : TestBase
         return new OutgoingMessage(new Guid(guid), dateTime, "headers", Encoding.UTF8.GetBytes("{}"));
     }
 
-    public MessageConsumingLoopTests(ITestOutputHelper output) : base(output)
+    public MessageConsumingLoopTests(ITestOutputHelper output) :
+        base(output)
     {
     }
 }

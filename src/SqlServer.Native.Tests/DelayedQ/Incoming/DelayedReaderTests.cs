@@ -6,52 +6,69 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class DelayedReaderTests : TestBase
+public class DelayedReaderTests :
+    TestBase
 {
     string table = "DelayedReaderTests";
 
     [Fact]
     public async Task Single()
     {
-        var reader = new DelayedQueueManager(table, SqlConnection);
-        await reader.SendData();
-        using (var result = reader.Read(1).Result)
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.SendData();
+            using (var result = manager.Read(1).Result)
+            {
+                ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            }
         }
     }
 
     [Fact]
     public async Task Single_nulls()
     {
-        var reader = new DelayedQueueManager(table, SqlConnection);
-        await reader.SendNullData();
-        using (var result = reader.Read(1).Result)
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.SendNullData();
+            using (var result = manager.Read(1).Result)
+            {
+                ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            }
         }
     }
 
     [Fact]
     public async Task Batch()
     {
-        var reader = new DelayedQueueManager(table, SqlConnection);
-        await reader.SendMultipleData();
-        var messages = new ConcurrentBag<IncomingDelayedVerifyTarget>();
-        var result = reader.Read(
-                size: 3,
-                startRowVersion: 2,
-                action: message => { messages.Add(message.ToVerifyTarget()); })
-            .Result;
-        Assert.Equal(4, result.LastRowVersion);
-        Assert.Equal(3, result.Count);
-        ObjectApprover.VerifyWithJson(messages.OrderBy(x => x.Due));
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new DelayedQueueManager(table, connection);
+            await manager.Create();
+            await manager.SendMultipleData();
+            var messages = new ConcurrentBag<IncomingDelayedVerifyTarget>();
+            var result = manager.Read(
+                    size: 3,
+                    startRowVersion: 2,
+                    action: message => { messages.Add(message.ToVerifyTarget()); })
+                .Result;
+            Assert.Equal(4, result.LastRowVersion);
+            Assert.Equal(3, result.Count);
+            ObjectApprover.VerifyWithJson(messages.OrderBy(x => x.Due));
+        }
     }
 
-    public DelayedReaderTests(ITestOutputHelper output) : base(output)
+    public DelayedReaderTests(ITestOutputHelper output) :
+        base(output)
     {
-        var manager = new DelayedQueueManager(table, SqlConnection);
-        manager.Drop().Await();
-        manager.Create().Await();
     }
 }
