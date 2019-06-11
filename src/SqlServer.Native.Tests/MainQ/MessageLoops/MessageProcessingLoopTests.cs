@@ -18,100 +18,112 @@ public class MessageProcessingLoopTests :
     [Fact]
     public async Task Should_not_throw_when_run_over_end()
     {
-        await SqlConnection.DropTable(null, table);
-        var manager = new QueueManager(table, SqlConnection);
-        await manager.Create();
-        await SendMessages(manager);
+        var database = await LocalDb();
 
-        Exception exception = null;
-        using (var loop = new MessageProcessingLoop(
-            table: table,
-            startingRow: 1,
-            connectionBuilder: Connection.OpenAsyncConnection,
-            callback: (connection, message, cancellation) => Task.CompletedTask,
-            errorCallback: innerException => { exception = innerException; },
-            persistRowVersion: (connection, currentRowVersion, token) => Task.CompletedTask
-        ))
+        using (var connection = await database.OpenConnection())
         {
-            loop.Start();
-            Thread.Sleep(1000);
-        }
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await SendMessages(manager);
 
-        Assert.Null(exception);
+            Exception exception = null;
+            using (var loop = new MessageProcessingLoop(
+                table: table,
+                startingRow: 1,
+                connectionBuilder: token => database.OpenConnection(),
+                callback: (sqlConnection, message, cancellation) => Task.CompletedTask,
+                errorCallback: innerException => { exception = innerException; },
+                persistRowVersion: (sqlConnection, currentRowVersion, token) => Task.CompletedTask
+            ))
+            {
+                loop.Start();
+                Thread.Sleep(1000);
+            }
+
+            Assert.Null(exception);
+        }
     }
 
     [Fact]
     public async Task Should_get_correct_count()
     {
-        var resetEvent = new ManualResetEvent(false);
-        await SqlConnection.DropTable(null, table);
-        var manager = new QueueManager(table, SqlConnection);
-        await manager.Create();
-        await SendMessages(manager);
+        var database = await LocalDb();
 
-        var count = 0;
-
-        Task Callback(SqlConnection connection, IncomingMessage incomingBytesMessage, CancellationToken arg3)
+        using (var connection = await database.OpenConnection())
         {
-            count++;
-            if (count == 5)
+            var resetEvent = new ManualResetEvent(false);
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await SendMessages(manager);
+
+            var count = 0;
+
+            Task Callback(SqlConnection sqlConnection, IncomingMessage incomingBytesMessage, CancellationToken arg3)
             {
-                resetEvent.Set();
+                count++;
+                if (count == 5)
+                {
+                    resetEvent.Set();
+                }
+
+                return Task.CompletedTask;
             }
 
-            return Task.CompletedTask;
-        }
+            using (var loop = new MessageProcessingLoop(
+                table: table,
+                startingRow: 1,
+                connectionBuilder: token => database.OpenConnection(),
+                callback: Callback,
+                errorCallback: exception => { },
+                persistRowVersion: (sqlConnection, currentRowVersion, token) => Task.CompletedTask))
+            {
+                loop.Start();
+                resetEvent.WaitOne(TimeSpan.FromSeconds(30));
+            }
 
-        using (var loop = new MessageProcessingLoop(
-            table: table,
-            startingRow: 1,
-            connectionBuilder: Connection.OpenAsyncConnection,
-            callback: Callback,
-            errorCallback: exception => { },
-            persistRowVersion: (connection, currentRowVersion, token) => Task.CompletedTask))
-        {
-            loop.Start();
-            resetEvent.WaitOne(TimeSpan.FromSeconds(30));
+            Assert.Equal(5, count);
         }
-
-        Assert.Equal(5, count);
     }
 
     [Fact]
     public async Task Should_get_correct_next_row_version()
     {
-        var resetEvent = new ManualResetEvent(false);
-        await SqlConnection.DropTable(null, table);
-        var manager = new QueueManager(table, SqlConnection);
-        await manager.Create();
-        await SendMessages(manager);
+        var database = await LocalDb();
 
-        long rowVersion = 0;
-
-        Task PersistRowVersion(SqlConnection sqlConnection, long currentRowVersion, CancellationToken arg3)
+        using (var connection = await database.OpenConnection())
         {
-            rowVersion = currentRowVersion;
-            if (rowVersion == 6)
+            var resetEvent = new ManualResetEvent(false);
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await SendMessages(manager);
+
+            long rowVersion = 0;
+
+            Task PersistRowVersion(SqlConnection sqlConnection, long currentRowVersion, CancellationToken arg3)
             {
-                resetEvent.Set();
+                rowVersion = currentRowVersion;
+                if (rowVersion == 6)
+                {
+                    resetEvent.Set();
+                }
+
+                return Task.CompletedTask;
             }
 
-            return Task.CompletedTask;
-        }
+            using (var loop = new MessageProcessingLoop(
+                table: table,
+                startingRow: 1,
+                connectionBuilder: token => database.OpenConnection(),
+                callback: (collection, message, cancellation) => Task.CompletedTask,
+                errorCallback: exception => { },
+                persistRowVersion: PersistRowVersion))
+            {
+                loop.Start();
+                resetEvent.WaitOne(TimeSpan.FromSeconds(30));
+            }
 
-        using (var loop = new MessageProcessingLoop(
-            table: table,
-            startingRow: 1,
-            connectionBuilder: Connection.OpenAsyncConnection,
-            callback: (collection, message, cancellation) => Task.CompletedTask,
-            errorCallback: exception => { },
-            persistRowVersion: PersistRowVersion))
-        {
-            loop.Start();
-            resetEvent.WaitOne(TimeSpan.FromSeconds(30));
+            Assert.Equal(6, rowVersion);
         }
-
-        Assert.Equal(6, rowVersion);
     }
 
     static Task SendMessages(QueueManager sender)
