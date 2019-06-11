@@ -4,24 +4,30 @@ using NServiceBus.Transport.SqlServerNative;
 using Xunit;
 using Xunit.Abstractions;
 
-public class ConsumerIntegrationTests : TestBase
+public class ConsumerIntegrationTests :
+    TestBase
 {
     static string table = "IntegrationConsumer_Consumer";
 
     [Fact]
     public async Task Run()
     {
-        await SqlConnection.DropTable(null, table);
-        var manager = new QueueManager(table, SqlConnection);
-        await manager.Create();
-        var configuration = await EndpointCreator.Create("IntegrationConsumer");
-        configuration.SendOnly();
-        var endpoint = await Endpoint.Start(configuration);
-        await SendStartMessage(endpoint);
-        var consumer = new QueueManager(table, SqlConnection);
-        using (var message = await consumer.Consume())
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            Assert.NotNull(message);
+            await connection.DropTable(null, table);
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            var configuration = await EndpointCreator.Create("IntegrationConsumer", connection);
+            configuration.SendOnly();
+            var endpoint = await Endpoint.Start(configuration);
+            await SendStartMessage(endpoint);
+            var consumer = new QueueManager(table, connection);
+            using (var message = await consumer.Consume())
+            {
+                Assert.NotNull(message);
+            }
         }
     }
 
@@ -36,7 +42,8 @@ public class ConsumerIntegrationTests : TestBase
     {
     }
 
-    public ConsumerIntegrationTests(ITestOutputHelper output) : base(output)
+    public ConsumerIntegrationTests(ITestOutputHelper output) :
+        base(output)
     {
     }
 }

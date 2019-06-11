@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 
-public class FakeHttpRequest : HttpRequest
+public class FakeHttpRequest :
+    HttpRequest
 {
-    public Dictionary<string,StringValues> HeadersDictionary;
+    public Dictionary<string, StringValues> HeadersDictionary;
 
     public override Task<IFormCollection> ReadFormAsync(CancellationToken cancellationToken = new CancellationToken())
     {

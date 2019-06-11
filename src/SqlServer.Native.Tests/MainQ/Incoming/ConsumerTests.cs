@@ -6,7 +6,8 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class ConsumerTests : TestBase
+public class ConsumerTests :
+    TestBase
 {
     string table = "ConsumerTests";
 

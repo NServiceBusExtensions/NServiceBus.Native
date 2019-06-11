@@ -12,7 +12,8 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class RequestParserTests : TestBase
+public class RequestParserTests :
+    TestBase
 {
     [Fact]
     public void Optional()
@@ -81,7 +82,8 @@ public class RequestParserTests : TestBase
             });
     }
 
-    public RequestParserTests(ITestOutputHelper output) : base(output)
+    public RequestParserTests(ITestOutputHelper output) :
+        base(output)
     {
     }
 }
