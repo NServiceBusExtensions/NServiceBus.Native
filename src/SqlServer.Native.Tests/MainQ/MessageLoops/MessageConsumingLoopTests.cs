@@ -8,7 +8,8 @@ using NServiceBus.Transport.SqlServerNative;
 using Xunit;
 using Xunit.Abstractions;
 
-public class MessageConsumingLoopTests : TestBase
+public class MessageConsumingLoopTests :
+    TestBase
 {
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 
@@ -17,72 +18,79 @@ public class MessageConsumingLoopTests : TestBase
     [Fact]
     public async Task Should_not_throw_when_run_over_end()
     {
-        var manager = new QueueManager(table, SqlConnection);
-        await manager.Drop();
-        await manager.Create();
-        await SendMessages();
+        var database = await LocalDb();
 
-        Exception exception = null;
-        using (var loop = new MessageConsumingLoop(
-            table: table,
-            connectionBuilder: Connection.OpenAsyncConnection,
-            callback: (connection, message, cancellation) => Task.CompletedTask,
-            errorCallback: innerException => { exception = innerException;}
-            ))
+        using (var connection = await database.OpenConnection())
         {
-            loop.Start();
-            Thread.Sleep(1000);
-        }
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await SendMessages(manager);
 
-        Assert.Null(exception);
+            Exception exception = null;
+            using (var loop = new MessageConsumingLoop(
+                table: table,
+                connectionBuilder: token => database.OpenConnection(),
+                callback: (connection2, message, cancellation) => Task.CompletedTask,
+                errorCallback: innerException => { exception = innerException; }
+            ))
+            {
+                loop.Start();
+                Thread.Sleep(1000);
+            }
+
+            Assert.Null(exception);
+        }
     }
+
     [Fact]
     public async Task Should_get_correct_count()
     {
-        var resetEvent = new ManualResetEvent(false);
-        await SqlConnection.DropTable(null, table);
-        var manager = new QueueManager(table, SqlConnection);
-        await manager.Create();
-        await SendMessages();
+        var database = await LocalDb();
 
-        var count = 0;
-
-        Task Callback(SqlConnection connection, IncomingMessage message, CancellationToken cancellation)
+        using (var connection = await database.OpenConnection())
         {
-            count++;
-            if (count == 5)
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            var resetEvent = new ManualResetEvent(false);
+            await SendMessages(manager);
+
+            var count = 0;
+
+            Task Callback(SqlConnection connection2, IncomingMessage message, CancellationToken cancellation)
             {
-                resetEvent.Set();
+                count++;
+                if (count == 5)
+                {
+                    resetEvent.Set();
+                }
+
+                return Task.CompletedTask;
             }
 
-            return Task.CompletedTask;
-        }
+            using (var loop = new MessageConsumingLoop(
+                table: table,
+                connectionBuilder: token => database.OpenConnection(),
+                callback: Callback,
+                errorCallback: exception => { }))
+            {
+                loop.Start();
+                resetEvent.WaitOne(TimeSpan.FromSeconds(30));
+            }
 
-        using (var loop = new MessageConsumingLoop(
-            table: table,
-            connectionBuilder: Connection.OpenAsyncConnection,
-            callback: Callback,
-            errorCallback: exception => { }))
-        {
-            loop.Start();
-            resetEvent.WaitOne(TimeSpan.FromSeconds(30));
+            Assert.Equal(5, count);
         }
-
-        Assert.Equal(5, count);
     }
 
-    Task SendMessages()
+    static Task SendMessages(QueueManager sender)
     {
-        var sender = new QueueManager(table, SqlConnection);
-
         return sender.Send(new List<OutgoingMessage>
-            {
-                BuildMessage("00000000-0000-0000-0000-000000000001"),
-                BuildMessage("00000000-0000-0000-0000-000000000002"),
-                BuildMessage("00000000-0000-0000-0000-000000000003"),
-                BuildMessage("00000000-0000-0000-0000-000000000004"),
-                BuildMessage("00000000-0000-0000-0000-000000000005")
-            });
+        {
+            BuildMessage("00000000-0000-0000-0000-000000000001"),
+            BuildMessage("00000000-0000-0000-0000-000000000002"),
+            BuildMessage("00000000-0000-0000-0000-000000000003"),
+            BuildMessage("00000000-0000-0000-0000-000000000004"),
+            BuildMessage("00000000-0000-0000-0000-000000000005")
+        });
     }
 
     static OutgoingMessage BuildMessage(string guid)
