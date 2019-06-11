@@ -14,58 +14,84 @@ public class ConsumerTests :
     [Fact]
     public async Task Single()
     {
-        await TestDataBuilder.SendData(table);
-        var consumer = new QueueManager(table, SqlConnection);
-        using (var result = consumer.Consume().Result)
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            var manager = new QueueManager(table, connection);
+            manager.Create().Await();
+            await TestDataBuilder.SendData(table, connection);
+            var consumer = new QueueManager(table, connection);
+            using (var result = consumer.Consume().Result)
+            {
+                ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            }
         }
     }
 
     [Fact]
     public async Task Single_nulls()
     {
-        await TestDataBuilder.SendNullData(table);
-        var consumer = new QueueManager(table, SqlConnection);
-        using (var result = consumer.Consume().Result)
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
         {
-            ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            var manager = new QueueManager(table, connection);
+            manager.Create().Await();
+            await TestDataBuilder.SendNullData(table, connection);
+            var consumer = new QueueManager(table, connection);
+            using (var result = consumer.Consume().Result)
+            {
+                ObjectApprover.VerifyWithJson(result.ToVerifyTarget());
+            }
         }
     }
 
     [Fact]
     public async Task Batch()
     {
-        await TestDataBuilder.SendMultipleDataAsync(table);
+        var database = await LocalDb();
 
-        var consumer = new QueueManager(table, SqlConnection);
-        var messages = new ConcurrentBag<IncomingVerifyTarget>();
-        var result = consumer.Consume(
-                size: 3,
-                action: message => { messages.Add(message.ToVerifyTarget()); })
-            .Result;
-        Assert.Equal(3, result.Count);
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            manager.Create().Await();
+            await TestDataBuilder.SendMultipleDataAsync(table, connection);
+
+            var consumer = new QueueManager(table, connection);
+            var messages = new ConcurrentBag<IncomingVerifyTarget>();
+            var result = consumer.Consume(
+                    size: 3,
+                    action: message => { messages.Add(message.ToVerifyTarget()); })
+                .Result;
+            Assert.Equal(3, result.Count);
+        }
     }
 
     [Fact]
     public async Task Batch_all()
     {
-        await TestDataBuilder.SendMultipleDataAsync(table);
+        var database = await LocalDb();
 
-        var consumer = new QueueManager(table, SqlConnection);
-        var messages = new ConcurrentBag<IncomingVerifyTarget>();
-        var result = consumer.Consume(
-                size: 10,
-                action: message => { messages.Add(message.ToVerifyTarget()); })
-            .Result;
-        Assert.Equal(5, result.Count);
-        ObjectApprover.VerifyWithJson(messages.OrderBy(x => x.Id));
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            manager.Create().Await();
+            await TestDataBuilder.SendMultipleDataAsync(table, connection);
+
+            var consumer = new QueueManager(table, connection);
+            var messages = new ConcurrentBag<IncomingVerifyTarget>();
+            var result = consumer.Consume(
+                    size: 10,
+                    action: message => { messages.Add(message.ToVerifyTarget()); })
+                .Result;
+            Assert.Equal(5, result.Count);
+            ObjectApprover.VerifyWithJson(messages.OrderBy(x => x.Id));
+        }
     }
 
-    public ConsumerTests(ITestOutputHelper output) : base(output)
+    public ConsumerTests(ITestOutputHelper output) :
+        base(output)
     {
-        var manager = new QueueManager(table, SqlConnection);
-        manager.Drop().Await();
-        manager.Create().Await();
     }
 }
