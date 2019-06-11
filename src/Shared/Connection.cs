@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Data.SqlClient;
-using System.Threading;
-using System.Threading.Tasks;
 
 public static class Connection
 {
@@ -23,17 +21,5 @@ public static class Connection
         var connection = new SqlConnection(ConnectionString);
         connection.Open();
         return connection;
-    }
-
-    public static async Task<SqlConnection> OpenAsyncConnection(CancellationToken cancellation)
-    {
-        var connection = new SqlConnection(ConnectionString);
-        await connection.OpenAsync(cancellation);
-        return connection;
-    }
-
-    public static SqlConnection NewConnection()
-    {
-        return new SqlConnection(ConnectionString);
     }
 }
