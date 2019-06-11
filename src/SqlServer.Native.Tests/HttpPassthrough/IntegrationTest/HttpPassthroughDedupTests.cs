@@ -46,10 +46,9 @@ public class HttpPassthroughDedupTests :
 
     static async Task<int> SendAsync(ClientFormSender clientFormSender, Guid guid)
     {
-        var message = "{}";
         var send = await clientFormSender.Send(
             route: "/SendMessage",
-            message: message,
+            message: "{}",
             typeName: "DedupMessage",
             destination: nameof(HttpPassthroughDedupTests),
             messageId: guid);
