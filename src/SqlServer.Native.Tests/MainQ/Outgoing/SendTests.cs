@@ -8,7 +8,8 @@ using ObjectApproval;
 using Xunit;
 using Xunit.Abstractions;
 
-public class SendTests : TestBase
+public class SendTests :
+    TestBase
 {
     static DateTime dateTime = new DateTime(2000, 1, 1, 1, 1, 1, DateTimeKind.Utc);
 
@@ -17,86 +18,114 @@ public class SendTests : TestBase
     [Fact]
     public async Task Single_bytes()
     {
-        var message = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            var message = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_with_transaction()
     {
+        var database = await LocalDb();
         var message = BuildBytesMessage("00000000-0000-0000-0000-000000000001");
-        using (var transaction = SqlConnection.BeginTransaction())
+        using (var connection = await database.OpenConnection())
         {
-            var sender = new QueueManager(table, transaction);
-            await sender.Send(message);
-            transaction.Commit();
-        }
+            using (var transaction = connection.BeginTransaction())
+            {
+                var manager = new QueueManager(table, transaction);
+                await manager.Create();
+                await manager.Send(message);
+                transaction.Commit();
+            }
 
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_bytes_nulls()
     {
-        var sender = new QueueManager("SendTests", SqlConnection);
-
+        var database = await LocalDb();
         var message = BuildBytesNullMessage("00000000-0000-0000-0000-000000000001");
-        await sender.Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_stream()
     {
+        var database = await LocalDb();
         var message = BuildStreamMessage("00000000-0000-0000-0000-000000000001");
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Single_stream_nulls()
     {
+        var database = await LocalDb();
         var message = BuildStreamMessage("00000000-0000-0000-0000-000000000001");
-        await Send(message);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await manager.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Batch()
     {
+        var database = await LocalDb();
         var messages = new List<OutgoingMessage>
         {
             BuildBytesMessage("00000000-0000-0000-0000-000000000001"),
             BuildStreamMessage("00000000-0000-0000-0000-000000000002")
         };
-        await Send(messages);
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await manager.Send(messages);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     [Fact]
     public async Task Batch_nulls()
     {
+        var database = await LocalDb();
         var messages = new List<OutgoingMessage>
         {
             BuildBytesNullMessage("00000000-0000-0000-0000-000000000001"),
             BuildStreamNullMessage("00000000-0000-0000-0000-000000000002")
         };
-        await Send(messages);
+        using (var connection = await database.OpenConnection())
+        {
+            var manager = new QueueManager(table, connection);
+            await manager.Create();
+            await manager.Send(messages);
 
-        ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, SqlConnection));
-    }
-
-    Task Send(List<OutgoingMessage> messages)
-    {
-        var sender = new QueueManager(table, SqlConnection);
-        return sender.Send(messages);
-    }
-
-    Task<long> Send(OutgoingMessage message)
-    {
-        var sender = new QueueManager(table, SqlConnection);
-        return sender.Send(message);
+            ObjectApprover.VerifyWithJson(await SqlHelper.ReadData(table, connection));
+        }
     }
 
     static OutgoingMessage BuildBytesMessage(string guid)
@@ -120,10 +149,8 @@ public class SendTests : TestBase
         return new OutgoingMessage(new Guid(guid), bodyBytes: null);
     }
 
-    public SendTests(ITestOutputHelper output) : base(output)
+    public SendTests(ITestOutputHelper output) :
+        base(output)
     {
-        var manager = new QueueManager(table, SqlConnection);
-        manager.Drop().Await();
-        manager.Create().Await();
     }
 }
