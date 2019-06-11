@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,24 +12,30 @@ using Headers = NServiceBus.Transport.SqlServerNative.Headers;
 
 public class SendIntegration : TestBase
 {
-   static ManualResetEvent resetEvent;
+    static ManualResetEvent resetEvent;
+
     [Fact]
     public async Task Run()
     {
-        resetEvent = new ManualResetEvent(false);
-        var configuration = await EndpointCreator.Create("IntegrationSend");
-        var endpoint = await Endpoint.Start(configuration);
-        await SendStartMessage();
-        resetEvent.WaitOne();
-        await endpoint.Stop();
+        var database = await LocalDb();
+
+        using (var connection = await database.OpenConnection())
+        {
+            resetEvent = new ManualResetEvent(false);
+            var configuration = await EndpointCreator.Create("IntegrationSend", connection);
+            var endpoint = await Endpoint.Start(configuration);
+            await SendStartMessage(connection);
+            resetEvent.WaitOne();
+            await endpoint.Stop();
+        }
     }
 
-    Task SendStartMessage()
+    static Task SendStartMessage(SqlConnection connection)
     {
-        var sender = new QueueManager("IntegrationSend", SqlConnection);
+        var sender = new QueueManager("IntegrationSend", connection);
         var headers = new Dictionary<string, string>
         {
-            { "NServiceBus.EnclosedMessageTypes", typeof(SendMessage).FullName}
+            {"NServiceBus.EnclosedMessageTypes", typeof(SendMessage).FullName}
         };
 
         var message = new OutgoingMessage(Guid.NewGuid(), DateTime.Now.AddDays(1), Headers.Serialize(headers), Encoding.UTF8.GetBytes("{}"));
