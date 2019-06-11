@@ -32,7 +32,7 @@ public class DedupeManagerTests : TestBase
             await queueManager.Send(message2);
             var cleaner = new DedupeManager(connection, "Deduplication");
             await cleaner.CleanupItemsOlderThan(now);
-            ObjectApprover.VerifyWithJson(SqlHelper.ReadDuplicateData("Deduplication", SqlConnection));
+            ObjectApprover.VerifyWithJson(SqlHelper.ReadDuplicateData("Deduplication", connection));
         }
     }
 
