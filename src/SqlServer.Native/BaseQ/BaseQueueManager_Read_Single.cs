@@ -16,7 +16,7 @@ namespace NServiceBus.Transport.SqlServerNative
             DbDataReader? reader = null;
             try
             {
-                using var command = BuildReadCommand(1, rowVersion);
+                await using var command = BuildReadCommand(1, rowVersion);
                 reader = await command.RunSingleRowReader(cancellation);
                 if (!await reader.ReadAsync(cancellation))
                 {

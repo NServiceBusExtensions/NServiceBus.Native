@@ -28,7 +28,7 @@ namespace NServiceBus.Transport.SqlServerNative
         /// <summary>
         /// Deserialize <paramref name="json"/> into a <see cref="IDictionary{TKey,TValue}"/>.
         /// </summary>
-        public static IDictionary<string, string> DeSerialize(string json)
+        public static IDictionary<string, string> DeSerialize(string? json)
         {
             if (json == null)
             {

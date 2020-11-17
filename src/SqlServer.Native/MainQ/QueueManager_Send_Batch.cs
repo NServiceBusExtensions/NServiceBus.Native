@@ -9,7 +9,7 @@ namespace NServiceBus.Transport.SqlServerNative
         public virtual async Task Send(IEnumerable<OutgoingMessage> messages, CancellationToken cancellation = default)
         {
             Guard.AgainstNull(messages, nameof(messages));
-            using var command = Connection.CreateCommand(Transaction, string.Format(sendSql, Table));
+            await using var command = Connection.CreateCommand(Transaction, string.Format(sendSql, Table));
             var parameters = command.Parameters;
 
             var idParameter = CreateIdParameter(command, parameters);
@@ -29,7 +29,7 @@ namespace NServiceBus.Transport.SqlServerNative
         public virtual async Task Send(IAsyncEnumerable<OutgoingMessage> messages, CancellationToken cancellation = default)
         {
             Guard.AgainstNull(messages, nameof(messages));
-            using var command = Connection.CreateCommand(Transaction, string.Format(sendSql, Table));
+            await using var command = Connection.CreateCommand(Transaction, string.Format(sendSql, Table));
             var parameters = command.Parameters;
 
             var idParameter = CreateIdParameter(command, parameters);

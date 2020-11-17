@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>NServiceBus.SqlServer.Native</AssemblyName>
     <PackageName>NServiceBus.SqlServer.Native</PackageName>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>net5</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ConfigureAwait.Fody" Version="3.3.1" PrivateAssets="All" />
@@ -11,6 +11,5 @@
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="ProjectDefaults" Version="1.0.48" PrivateAssets="All" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" Condition="$(Configuration) == 'Release'" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" Condition="$(TargetFramework) == 'netstandard2.0'" />
   </ItemGroup>
 </Project>

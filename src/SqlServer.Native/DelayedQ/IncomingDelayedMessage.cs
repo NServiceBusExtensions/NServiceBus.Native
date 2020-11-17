@@ -13,11 +13,7 @@ namespace NServiceBus.Transport.SqlServerNative
     public class IncomingDelayedMessage :
         IIncomingMessage
     {
-#if NETSTANDARD2_1
         IAsyncDisposable[] cleanups;
-#else
-        IDisposable[] cleanups;
-#endif
         bool disposed;
         volatile int disposeSignaled;
         long rowVersion;
@@ -25,11 +21,7 @@ namespace NServiceBus.Transport.SqlServerNative
         string headers;
         Stream? body;
 
-#if NETSTANDARD2_1
         public IncomingDelayedMessage(long rowVersion, DateTime? due, string headers, Stream? body, IAsyncDisposable[] cleanups)
-#else
-        public IncomingDelayedMessage(long rowVersion, DateTime? due, string headers, Stream? body, IDisposable[] cleanups)
-#endif
         {
             Guard.AgainstNull(cleanups, nameof(cleanups));
             Guard.AgainstNegativeAndZero(rowVersion, nameof(rowVersion));

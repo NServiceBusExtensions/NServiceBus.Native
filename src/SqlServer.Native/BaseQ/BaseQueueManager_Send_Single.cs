@@ -15,7 +15,7 @@ namespace NServiceBus.Transport.SqlServerNative
 
         async Task<long> InnerSend(TOutgoing message, CancellationToken cancellation)
         {
-            using var command = CreateSendCommand(message);
+            await using var command = CreateSendCommand(message);
             var rowVersion = await command.RunScalar(cancellation);
             if (rowVersion == null)
             {

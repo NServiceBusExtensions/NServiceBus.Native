@@ -22,13 +22,13 @@ static class Serializer
     {
         var serializer = BuildDictionarySerializer();
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        return (Dictionary<string, string>) serializer.ReadObject(stream);
+        return (Dictionary<string, string>) serializer.ReadObject(stream)!;
     }
     public static List<string> DeSerializeList(string json)
     {
         var serializer = BuildListSerializer();
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        return (List<string>) serializer.ReadObject(stream);
+        return (List<string>) serializer.ReadObject(stream)!;
     }
 
     // Items needs to be a list since the DataContractJsonSerializer

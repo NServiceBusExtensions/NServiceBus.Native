@@ -21,9 +21,10 @@ namespace NServiceBus.Transport.SqlServerNative
         {
             Guard.AgainstNull(table, nameof(table));
             Guard.AgainstNull(transaction, nameof(transaction));
+            Guard.AgainstNull(transaction.Connection, "transaction.Connection");
             this.transaction = transaction;
             this.table = table;
-            connection = transaction.Connection;
+            connection = transaction.Connection!;
         }
 
         /// <summary>

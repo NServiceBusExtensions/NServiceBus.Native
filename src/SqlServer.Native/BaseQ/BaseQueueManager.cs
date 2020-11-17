@@ -24,16 +24,17 @@ namespace NServiceBus.Transport.SqlServerNative
         {
             Guard.AgainstNull(table, nameof(table));
             Guard.AgainstNull(transaction, nameof(transaction));
+            Guard.AgainstNull(transaction.Connection, "transaction.Connection");
             Table = table;
             Transaction = transaction;
-            Connection = transaction.Connection;
+            Connection = transaction.Connection!;
         }
 
         async Task<IncomingResult> ReadMultiple(DbCommand command, Func<TIncoming, Task> func, CancellationToken cancellation)
         {
             var count = 0;
             long? lastRowVersion = null;
-            using var reader = await command.RunSequentialReader(cancellation);
+            await using var reader = await command.RunSequentialReader(cancellation);
             while (await reader.ReadAsync(cancellation))
             {
                 count++;

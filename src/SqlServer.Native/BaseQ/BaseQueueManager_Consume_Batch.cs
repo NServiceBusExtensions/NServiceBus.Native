@@ -14,11 +14,7 @@ namespace NServiceBus.Transport.SqlServerNative
     {
         protected abstract DbCommand BuildConsumeCommand(int batchSize);
 
-        #if NETSTANDARD2_1
         protected abstract TIncoming ReadMessage(DbDataReader dataReader, params IAsyncDisposable[] cleanups);
-        #else
-        protected abstract TIncoming ReadMessage(DbDataReader dataReader, params IDisposable[] cleanups);
-        #endif
         public virtual Task<IncomingResult> Consume(int size, Action<TIncoming> action, CancellationToken cancellation = default)
         {
             Guard.AgainstNull(action, nameof(action));
@@ -29,7 +25,7 @@ namespace NServiceBus.Transport.SqlServerNative
         {
             Guard.AgainstNegativeAndZero(size, nameof(size));
             Guard.AgainstNull(func, nameof(func));
-            using var command = BuildConsumeCommand(size);
+            await using var command = BuildConsumeCommand(size);
             return await ReadMultiple(command, func, cancellation);
         }
     }
